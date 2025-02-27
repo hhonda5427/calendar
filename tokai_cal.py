@@ -45,16 +45,18 @@ except ValueError:
 
 # Generate dates for Sundays, 2nd Saturdays, and 4th Saturdays between start_date and end_date
 current_date = start_date
+saturday_count = 0  # 土曜日のカウントを初期化
 while current_date <= end_date:
     dates_to_generate = []
     if current_date.weekday() == 6:  # Sunday
         dates_to_generate.append(current_date.strftime("%Y/%m/%d"))
         dates_to_generate.append('日曜日')  # Sunday
     elif current_date.weekday() == 5:  # Saturday
-        if (current_date.day // 7) == 1:  # 2nd Saturday
+        saturday_count += 1  # 土曜日をカウント
+        if saturday_count == 2:  # 2回目の土曜日
             dates_to_generate.append(current_date.strftime("%Y/%m/%d"))
             dates_to_generate.append('第2土曜日')
-        if (current_date.day // 7) == 3:  # 4th Saturday
+        if saturday_count == 4:  # 4回目の土曜日
             dates_to_generate.append(current_date.strftime("%Y/%m/%d"))
             dates_to_generate.append('第4土曜日')
     
@@ -74,7 +76,8 @@ while current_date <= end_date:
             calendar_data.append(dates_to_generate)
        
     current_date += datetime.timedelta(days=1)
-
+    if current_date.day == 1:
+        saturday_count = 0
 
 calendar_data.sort(key=lambda x: datetime.datetime.strptime(x[0], "%Y/%m/%d").date())
 
