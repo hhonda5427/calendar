@@ -7,6 +7,7 @@ import calendar
 import csv
 import io
 import os
+import sys
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
 from datetime import datetime
@@ -24,6 +25,29 @@ COLORS = {
 }
 
 WEEKDAY_NAMES = ["月", "火", "水", "木", "金", "土", "日"]
+
+
+def _get_app_dir():
+    """スクリプトまたは exe があるフォルダを返す（PyInstaller 対応）"""
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def _normalize_date_str(s):
+    """yyyy/mm/dd, yyyy/m/dd, yyyy/mm/d, yyyy/m/d を yyyy/mm/dd に正規化。失敗時は None。"""
+    s = s.strip()
+    if not s or "/" not in s:
+        return None
+    parts = s.split("/")
+    if len(parts) != 3:
+        return None
+    try:
+        y, m, d = int(parts[0]), int(parts[1]), int(parts[2])
+        dt = datetime(y, m, d)
+        return f"{dt.year:04d}/{dt.month:02d}/{dt.day:02d}"
+    except (ValueError, TypeError):
+        return None
 
 
 def _nth_weekday_name(date_key):
@@ -182,7 +206,8 @@ class HolidayCalendarApp:
         path = filedialog.asksaveasfilename(
             defaultextension=".csv",
             filetypes=[("CSV", "*.csv"), ("すべて", "*.*")],
-            initialfilename="holiday_calendar.csv",
+            initialdir=_get_app_dir(),
+            initialfile="holiday_calendar.csv",
         )
         if not path:
             return
@@ -215,9 +240,12 @@ class HolidayCalendarApp:
             if not row or not row[0].strip():
                 continue
             # 1行目がヘッダーかどうか（「日付」または日付形式でない）
-            if i == 0 and (row[0].strip() == "日付" or "/" not in row[0]):
+            raw_date = row[0].strip()
+            if i == 0 and (raw_date == "日付" or "/" not in raw_date):
                 continue
-            date_str = row[0].strip()
+            date_str = _normalize_date_str(raw_date)
+            if date_str is None:
+                continue
             name_str = row[1].strip() if len(row) > 1 else ""
             rows.append((date_str, name_str))
         return rows
@@ -225,7 +253,7 @@ class HolidayCalendarApp:
     def _load_tokai_calendar_if_exists(self):
         """同一ディレクトリに tokai-calendar.csv があれば読み込む"""
         try:
-            base = os.path.dirname(os.path.abspath(__file__))
+            base = _get_app_dir()
             path = os.path.join(base, "tokai-calendar.csv")
             if not os.path.isfile(path):
                 return
@@ -238,7 +266,7 @@ class HolidayCalendarApp:
     def _load_csv(self):
         path = filedialog.askopenfilename(
             filetypes=[("CSV", "*.csv"), ("すべて", "*.*")],
-            initialdir=os.path.dirname(os.path.abspath(__file__)),
+            initialdir=_get_app_dir(),
             initialfile="tokai-calendar.csv",
         )
         if not path:
